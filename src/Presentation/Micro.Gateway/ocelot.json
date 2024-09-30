@@ -1,0 +1,19 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/Orders",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7060
+        }
+      ],
+      "UpstreamPathTemplate": "/Micro",
+      "UpstreamHttpMethod": [ "Get", "Post" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "https://localhost:7279"
+  }
+}

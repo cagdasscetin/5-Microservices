@@ -1,0 +1,182 @@
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+  
+  microgateway:
+    build:
+      context: . 
+      dockerfile: Presentation/Micro.Gateway/Dockerfile
+    container_name: micro_gateway_service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5168
+      - ASPNETCORE_HTTPS_PORTS=7279
+      - ASPNETCORE_URLS=https://+:7279;http://+:5168
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5168:5168"
+      - "7279:7279"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+  
+  orderapi:
+    build:
+      context: .
+      dockerfile: Presentation/Order.API/Dockerfile
+    container_name: order_api_service
+    environment:
+      - ConnectionStrings__DefaultConnection=host=postgres;port=5432;username=user;password=password;database=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5036
+      - ASPNETCORE_HTTPS_PORTS=7060
+      - ASPNETCORE_URLS=https://+:7060;http://+:5036
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5036:5036"
+      - "7060:7060"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+        
+  orderconsumer:
+    build:
+      context: .
+      dockerfile: Presentation/Order.Consumer/Dockerfile
+    container_name: order_consumer_service
+    environment:
+      - ConnectionStrings__DefaultConnection=host=postgres;port=5432;username=user;password=password;database=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5281
+      - ASPNETCORE_HTTPS_PORTS=7285
+      - ASPNETCORE_URLS=https://+:7285;http://+:5281
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5281:5281"
+      - "7285:7285"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+  
+  outboxworker:
+    build:
+      context: .
+      dockerfile: Presentation/OutboxWorker/Dockerfile
+    container_name: outbox_worker_service
+    environment:
+      - ConnectionStrings__DefaultConnection=host=postgres;port=5432;username=user;password=password;database=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5062
+      - ASPNETCORE_HTTPS_PORTS=7117
+      - ASPNETCORE_URLS=https://+:7117;http://+:5062
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5062:5062"
+      - "7117:7117"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+  
+  paymentconsumer:
+    build:
+      context: .
+      dockerfile: Presentation/Payment.Consumer/Dockerfile
+    container_name: payment_consumer_service
+    environment:
+      - ConnectionStrings__DefaultConnection=host=postgres;port=5432;username=user;password=password;database=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5158
+      - ASPNETCORE_HTTPS_PORTS=7299
+      - ASPNETCORE_URLS=https://+:7299;http://+:5158
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5158:5158"
+      - "7299:7299"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+    
+  stockconsumer:
+    build:
+      context: .
+      dockerfile: Presentation/Stock.Consumer/Dockerfile
+    container_name: stock_consumer_service
+    environment:
+      - ConnectionStrings__DefaultConnection=host=postgres;port=5432;username=user;password=password;database=postgres
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5033
+      - ASPNETCORE_HTTPS_PORTS=7040
+      - ASPNETCORE_URLS=https://+:7040;http://+:5033
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=SuperSecretPassword
+    ports:
+      - "5033:5033"
+      - "7040:7040"
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - app-network
+    volumes:
+      - ./certs:/https/
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
+    driver: local
+  postgres_data:
+    driver: local
